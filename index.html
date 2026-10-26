@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1c2528">
+  <meta name="description" content="Echo is a browser-based investigation game about an old phone and an unfinished conversation.">
+  <title>Echo — Investigation Game</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css?v=2">
+  <script defer src="data.js?v=2"></script>
+  <script defer src="app.js?v=3"></script>
+</head>
+<body>
+  <main class="page-shell">
+    <aside class="side-panel intro-panel" aria-label="Game instructions">
+      <div class="brand-mark">ECHO<span> / 2006</span></div>
+      <p class="eyebrow">An investigation on an old phone</p>
+      <h1>What was left unsaid?</h1>
+      <p>You find a forgotten phone while studying in the library. Its messages point to a place called Echo and a friendship that ended without an explanation.</p>
+      <div class="info-card">
+        <h2>How to play</h2>
+        <p>Explore the phone and collect clues. Answer the questions on the right. Some folders have limited password attempts. There is credit for one outgoing call.</p>
+      </div>
+      <div class="info-card controls-card">
+        <h2>Controls</h2>
+        <dl>
+          <div><dt>Arrow keys</dt><dd>Move selection or game character</dd></div>
+          <div><dt>Enter</dt><dd>Select</dd></div>
+          <div><dt>Esc</dt><dd>Back</dd></div>
+          <div><dt>Backspace</dt><dd>Delete digit / Back</dd></div>
+          <div><dt>0–9, * and #</dt><dd>Phone keys</dd></div>
+          <div><dt>Space</dt><dd>Pause or resume a game</dd></div>
+        </dl>
+      </div>
+      <div class="utility-row">
+        <button id="mute-button" class="text-button" type="button" data-action="toggle-mute">Sound: On</button>
+        <button class="text-button" type="button" data-action="restart-request">Restart</button>
+      </div>
+    </aside>
+
+    <section class="phone-column" aria-label="Old phone">
+      <div class="phone-frame">
+        <div class="phone-top"><span class="earpiece"></span><span class="phone-brand">ECHO</span><span class="camera-dot"></span></div>
+        <div class="phone-screen-wrap">
+          <div class="screen-status" id="status-bar" aria-label="Phone status"></div>
+          <div class="screen-content" id="phone-screen" aria-live="polite"></div>
+          <div class="screen-softkeys"><button type="button" data-action="back">Back</button><button type="button" data-action="home">Home</button></div>
+        </div>
+        <div class="phone-nav" aria-label="Phone navigation keys">
+          <button type="button" data-key="ArrowUp" aria-label="Up">▲</button>
+          <div class="nav-middle"><button type="button" data-key="ArrowLeft" aria-label="Left">◀</button><button class="select-key" type="button" data-key="Enter" aria-label="Select">OK</button><button type="button" data-key="ArrowRight" aria-label="Right">▶</button></div>
+          <button type="button" data-key="ArrowDown" aria-label="Down">▼</button>
+        </div>
+        <div class="number-pad" aria-label="Phone number keypad">
+          <button type="button" data-key="1"><strong>1</strong><small>·</small></button>
+          <button type="button" data-key="2"><strong>2</strong><small>ABC</small></button>
+          <button type="button" data-key="3"><strong>3</strong><small>DEF</small></button>
+          <button type="button" data-key="4"><strong>4</strong><small>GHI</small></button>
+          <button type="button" data-key="5"><strong>5</strong><small>JKL</small></button>
+          <button type="button" data-key="6"><strong>6</strong><small>MNO</small></button>
+          <button type="button" data-key="7"><strong>7</strong><small>PQRS</small></button>
+          <button type="button" data-key="8"><strong>8</strong><small>TUV</small></button>
+          <button type="button" data-key="9"><strong>9</strong><small>WXYZ</small></button>
+          <button type="button" data-key="*"><strong>*</strong><small>+</small></button>
+          <button type="button" data-key="0"><strong>0</strong><small>space</small></button>
+          <button type="button" data-key="#"><strong>#</strong><small>·</small></button>
+        </div>
+        <div class="phone-bottom">ONE CALL LEFT</div>
+      </div>
+      <p class="phone-caption">Found in the library · October 2026</p>
+    </section>
+
+    <aside class="side-panel case-panel" aria-label="Investigation questions">
+      <p class="eyebrow">Case file 01</p>
+      <h2>Follow the echo</h2>
+      <div id="case-content"></div>
+      <div class="evidence-box">
+        <div class="evidence-heading"><h3>Evidence notebook</h3><span id="evidence-count">0 found</span></div>
+        <div id="evidence-list" aria-live="polite"></div>
+      </div>
+      <p class="case-footnote">Clues are recorded only after you inspect them.</p>
+    </aside>
+  </main>
+  <div id="modal-root"></div>
+  <div id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
