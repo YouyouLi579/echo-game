@@ -11,7 +11,7 @@
   const toastEl = document.getElementById("toast");
   const escape = (value) => String(value ?? "").replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
   const defaultState = () => ({
-    started: false, stage: 1, deadline: null, forced: false, ending: null, batteryAtEnd: null,
+    sshConnected: false, started: false, stage: 1, ownerWrong: 0, echoWrong: 0, personSolved: false, gameOver: null, deadline: null, forced: false, ending: null, batteryAtEnd: null,
     unlocked: { voicemail: false, memos: false, album: false, archive: false, deleted: false },
     memoWrong: 0, deletedAttempt: false, apologySent: false, callCredit: 1,
     viewed: [], completedGames: [], contacts: ["rina"], muted: false
@@ -25,7 +25,7 @@
     } catch { return defaultState(); }
   }
   let state = loadState();
-  let ui = { screen: state.ending ? "ending" : state.forced ? "dialer" : state.started ? "home" : "opening", payload: null };
+  let ui = { screen: state.gameOver ? "game-over" : state.ending ? "ending" : state.forced ? "dialer" : state.started ? "home" : "opening", payload: null };
   let history = [];
   let modal = state.forced && !state.ending ? { type: "battery" } : null;
   let answerError = "";
@@ -76,7 +76,7 @@
     game = null;
   }
   function go(screen, payload = null, replace = false) {
-    if (state.forced && !state.ending && screen !== "dialer" && screen !== "ending") return;
+    if (state.gameOver || (state.forced && !state.ending && screen !== "dialer" && screen !== "ending")) return;
     if (ui.screen === "game" && screen !== "game") stopGame();
     if (!replace) history.push({ ...ui });
     ui = { screen, payload };
@@ -87,14 +87,14 @@
   }
   function back() {
     if (modal) { if (modal.type !== "battery") { modal = null; renderModal(); } return; }
-    if (state.forced || ui.screen === "ending") return;
+    if (state.gameOver || state.forced || ui.screen === "ending") return;
     if (ui.screen === "game") stopGame();
     ui = history.pop() || { screen: "home", payload: null };
     render();
     screenEl.scrollTop = 0;
   }
   function home() {
-    if (modal || state.forced || ui.screen === "ending") return;
+    if (modal || state.gameOver || state.forced || ui.screen === "ending") return;
     if (ui.screen === "game") stopGame();
     history = [];
     ui = { screen: "home", payload: null };
@@ -139,6 +139,8 @@
     document.querySelector(".phone-bottom").textContent = state.callCredit ? "ONE CALL LEFT" : "NO CALL CREDIT";
   }
   function render() {
+    document.getElementById("ssh-gate").hidden = state.sshConnected;
+    document.getElementById("session-status").textContent = state.sshConnected ? "CONNECTED" : "DISCONNECTED";
     renderStatus();
     screenEl.innerHTML = renderScreen();
     renderCase();
@@ -149,6 +151,7 @@
   const button = (label, action, attrs = "", className = "screen-button") => `<button type="button" class="${className}" data-action="${action}" ${attrs}>${label}</button>`;
   function renderScreen() {
     switch (ui.screen) {
+      case "game-over": return `<p class="screen-label">Investigation ended</p><h2>Game over</h2><p>Three incorrect answers to Question ${state.gameOver === "owner" ? "1" : "2"}. Start a new investigation to try again.</p>${button("Start over", "restart-request")}`;
       case "opening": return `<p class="screen-label">Library · October 2026</p><h2>An old phone</h2><p>You pause your assignment and notice a button phone on the desk. It has 50% battery, no internet, and enough credit for one outgoing call.</p><p>A message arrives. Who left the phone here—and what is Echo?</p>${button("Begin investigation", "begin")}`;
       case "home": return `<p class="screen-label">Menu</p><h2>Old phone</h2><p class="screen-subtitle">${state.callCredit ? "One outgoing call remains" : "No call credit remains"}</p><div class="screen-grid">${[
         ["Messages", "messages", "Texts & folders"], ["Calls", "calls", "Dialer & contacts"],
@@ -206,7 +209,7 @@
     return `<p class="screen-label">Deleted · Late 2006</p><h2>Unsent message</h2><p class="screen-subtitle">To: Lauren</p><div class="artifact"><p>${escape(DATA.apology)}</p></div>${state.apologySent ? `<div class="message-bubble"><small>Lauren · Automatic reply</small><p>${escape(DATA.reply)}</p></div><p class="feedback success">Apology sent. Lauren's number is now in Contacts.</p>` : button("Send this message", "send-apology")}`;
   }
   function renderDialer() {
-    return `<p class="screen-label">Calls · ${state.callCredit} credit</p><h2>Dial a number</h2><p class="screen-subtitle">${state.stage < 3 ? "Outgoing calls become available when the final question appears." : "One confirmed outgoing call ends this investigation."}</p><form class="dial-form" data-form="dial"><label for="phone-input">Phone number</label><input id="phone-input" data-phone-input type="tel" inputmode="numeric" maxlength="11" autocomplete="off" placeholder="11 digits"><div class="form-row"><button class="screen-button inline" type="submit" ${state.stage < 3 || !state.callCredit ? "disabled" : ""}>Call</button></div></form>${dialError ? `<p class="feedback">${escape(dialError)}</p>` : ""}<h3>Discovered contacts</h3>${state.contacts.map(id => `<button type="button" class="screen-card" data-action="fill-contact" data-id="${id}"><strong>${escape(DATA.contacts[id].name)}</strong><span>${escape(DATA.contacts[id].number)}</span></button>`).join("")}`;
+    return `<p class="screen-label">Calls · ${state.callCredit} credit</p><h2>Dial a number</h2><p class="screen-subtitle">${state.stage < 3 ? "Outgoing calls become available after the terminal questions." : !state.personSolved && !state.forced ? "Answer the final question in the terminal before calling." : "One confirmed outgoing call ends this investigation."}</p><form class="dial-form" data-form="dial"><label for="phone-input">Phone number</label><input id="phone-input" data-phone-input type="tel" inputmode="numeric" maxlength="11" autocomplete="off" placeholder="11 digits"><div class="form-row"><button class="screen-button inline" type="submit" ${state.stage < 3 || (!state.personSolved && !state.forced) || !state.callCredit ? "disabled" : ""}>Call</button></div></form>${dialError ? `<p class="feedback">${escape(dialError)}</p>` : ""}<h3>Discovered contacts</h3>${state.contacts.map(id => `<button type="button" class="screen-card" data-action="fill-contact" data-id="${id}"><strong>${escape(DATA.contacts[id].name)}</strong><span>${escape(DATA.contacts[id].number)}</span></button>`).join("")}`;
   }
   function renderContacts() {
     return `<p class="screen-label">Calls</p><h2>Discovered contacts</h2>${state.contacts.map(id => `<div class="artifact"><strong>${escape(DATA.contacts[id].name)}</strong><p>${escape(DATA.contacts[id].number)}</p></div>`).join("")}${button("Open dialer", "dialer")}`;
@@ -278,23 +281,25 @@
     }).join("")}</div>`;
   }
   function renderEnding() {
+    const endingNumbers = { lauren: 1, rina: 2, emma: 3, collins: 4 };
     const item = DATA.endings[state.ending];
     if (!item) return "";
-    return `<p class="screen-label">Call completed · ${escape(DATA.contacts[state.ending].name)}</p><h2>${escape(item.title)}</h2>${item.lines.map(([speaker, line]) => `<div class="message-bubble ${speaker === "Player" ? "out" : ""}"><small>${escape(speaker)}</small><p>${escape(line)}</p></div>`).join("")}<div class="end-card">${escape(item.card)}</div>${button("Review discovered evidence", "review-evidence")}${button("Replay investigation", "restart-request")}`;
+    return `<p class="screen-label">Ending ${endingNumbers[state.ending]}/4</p><p class="screen-subtitle">Call completed · ${escape(DATA.contacts[state.ending].name)}</p><h2>${escape(item.title)}</h2>${item.lines.map(([speaker, line]) => `<div class="message-bubble ${speaker === "Player" ? "out" : ""}"><small>${escape(speaker)}</small><p>${escape(line)}</p></div>`).join("")}<div class="end-card">${escape(item.card)}</div><p class="screen-subtitle">Replay to explore another ending.</p>${button("Review discovered evidence", "review-evidence")}${button("Replay investigation", "restart-request")}`;
   }
   function renderEvidenceScreen() {
     return `<p class="screen-label">Case file</p><h2>Discovered evidence</h2>${state.viewed.filter(id => DATA.evidence[id]).map(id => `<div class="artifact"><strong>${escape(DATA.evidence[id][0])}</strong><p>${escape(DATA.evidence[id][1])}</p></div>`).join("") || "<p>No evidence recorded yet.</p>"}${button("Back to ending", "ending")}`;
   }
   function renderCase() {
+    if (state.gameOver) { caseEl.innerHTML = `<div class="question"><span class="step">Investigation ended</span><h3>Game over</h3><p>Question ${state.gameOver === "owner" ? "1" : "2"} was answered incorrectly three times. Start over to try again.</p>${button("Start over", "restart-request")}</div>`; return; }
     if (!state.started) { caseEl.innerHTML = `<div class="question pending"><span class="step">Case not yet opened</span><h3>Begin with the phone.</h3><p>The first question will appear when you start.</p></div>`; return; }
     let html = "";
     if (state.stage === 1) {
-      html = `<div class="question"><span class="step">Question 1 of 3</span><h3>Whose phone is this?</h3><form data-form="owner"><label for="owner-answer">Enter the owner's first name</label><input id="owner-answer" name="answer" autocomplete="off" required><button type="submit">Submit answer</button></form>${answerError ? `<p class="error-text">${escape(answerError)}</p>` : ""}</div>`;
+      html = `<div class="question"><span class="step">Question 1 of 3</span><h3>Whose phone is this?</h3><p class="screen-subtitle">${3 - state.ownerWrong} ${3 - state.ownerWrong === 1 ? "attempt" : "attempts"} remaining.</p><form data-form="owner"><label for="owner-answer">Enter the owner's first name</label><input id="owner-answer" name="answer" autocomplete="off" required><button type="submit">Submit answer</button></form>${answerError ? `<p class="error-text">${escape(answerError)}</p>` : ""}</div>`;
     } else {
       const ownerSource = state.viewed.includes("voicemail:young-woman") ? "The young woman's voicemail names Perla." : state.viewed.includes("photo:portrait") || state.viewed.includes("photo:certificate") ? "The graduation items identify Perla." : "You identified the owner.";
       html = `<div class="question completed"><span class="step">Question 1 · Solved</span><h3>Perla's phone</h3><p>${ownerSource}</p></div>`;
-      if (state.stage === 2) html += `<div class="question"><span class="step">Question 2 of 3</span><h3>What is Echo?</h3><form data-form="echo"><label for="echo-answer">Your answer (optional)</label><input id="echo-answer" name="answer" autocomplete="off" placeholder="Describe Echo"><label for="echo-choice">Or choose an answer</label><select id="echo-choice" name="choice"><option value="">Choose…</option><option value="person">A person</option><option value="board">An anonymous message board in the school library</option><option value="game">A phone game</option></select><button type="submit">Submit answer</button></form>${answerError ? `<p class="error-text">${escape(answerError)}</p>` : ""}</div>`;
-      else html += `<div class="question completed"><span class="step">Question 2 · Solved</span><h3>Echo was a library message board</h3><p>Students left anonymous notes and replies.</p></div>${state.ending ? `<div class="question completed"><span class="step">Question 3 · Call placed</span><h3>${escape(DATA.contacts[state.ending].name)}</h3><p>The outgoing call used the phone's last credit.</p></div>` : `<div class="question"><span class="step">Question 3 of 3</span><h3>Who is “that person”?</h3><p>Find the person you need to call. No written answer is required.</p><button type="button" data-action="dialer">Open dialer</button></div>`}`;
+      if (state.stage === 2) html += `<div class="question"><span class="step">Question 2 of 3</span><h3>What is Echo?</h3><p class="screen-subtitle">${3 - state.echoWrong} ${3 - state.echoWrong === 1 ? "attempt" : "attempts"} remaining.</p><form data-form="echo"><label for="echo-answer">Describe Echo</label><input id="echo-answer" name="answer" autocomplete="off" placeholder="What is Echo?" required><button type="submit">Submit answer</button></form>${answerError ? `<p class="error-text">${escape(answerError)}</p>` : ""}</div>`;
+      else html += `<div class="question completed"><span class="step">Question 2 · Solved</span><h3>Echo was a library message board</h3><p>Students left anonymous notes and replies.</p></div>${state.ending ? `<div class="question completed"><span class="step">Question 3 · Call placed</span><h3>${escape(DATA.contacts[state.ending].name)}</h3><p>The outgoing call used the phone's last credit.</p></div>` : `<div class="question"><span class="step">Question 3 of 3</span><h3>Who is “that person”?</h3>${state.personSolved ? `<p>Identity confirmed. Find the number and make your one call.</p><button type="button" data-action="dialer">Open dialer</button>` : state.forced ? `<p>The phone is about to die. Dial a number now.</p><button type="button" data-action="dialer">Open dialer</button>` : `<form data-form="person"><label for="person-answer">Enter the person's first name</label><input id="person-answer" name="answer" autocomplete="off" required><button type="submit">Submit answer</button></form>${answerError ? `<p class="error-text">${escape(answerError)}</p>` : ""}`}</div>`}`;
     }
     caseEl.innerHTML = html;
   }
@@ -343,7 +348,7 @@
     } else { gateError = "Incorrect code. You may try again."; render(); }
   }
   function submitDial(value) {
-    if (state.stage < 3 || !state.callCredit) { dialError = "Outgoing calls are not available yet."; render(); return; }
+    if (state.stage < 3 || (!state.personSolved && !state.forced) || !state.callCredit) { dialError = "Answer the final terminal question before calling."; render(); return; }
     if (value.length !== 11) { dialError = "Enter an 11-digit phone number."; render(); return; }
     const id = Object.keys(DATA.contacts).find(key => DATA.contacts[key].number === value);
     if (!id || !state.contacts.includes(id)) { dialError = "No connection. This number is not among the contacts you have found."; render(); return; }
@@ -352,11 +357,37 @@
     modal = { type: "call", contact: id };
     renderModal();
   }
+  function wrongAnswer(kind) {
+    const key = kind === "owner" ? "ownerWrong" : "echoWrong";
+    state[key]++;
+    if (state[key] >= 3) {
+      state.gameOver = kind;
+      stopGame();
+      history = [];
+      ui = { screen: "game-over", payload: null };
+      answerError = "";
+      save();
+      render();
+      return;
+    }
+    answerError = kind === "owner"
+      ? "That name does not match the evidence. Check the voicemail or graduation items."
+      : state.echoWrong >= 2 ? "Look for physical evidence of Echo in the photos and records." : "That does not describe Echo. Check the clues and try again.";
+    save();
+    renderCase();
+  }
   function handleSubmit(event) {
     const form = event.target.closest("form[data-form]");
     if (!form) return;
     event.preventDefault();
     const kind = form.dataset.form;
+    if (kind === "ssh") {
+      const command = form.elements.command.value.trim().replace(/\s+/g, " ").toLowerCase();
+      if (command === "ssh player@echo.local") { state.sshConnected = true; save(); render(); }
+      else document.getElementById("ssh-error").textContent = "Connection failed. Type: ssh player@echo.local";
+      return;
+    }
+    if (!state.sshConnected || state.gameOver) return;
     if (kind === "gate") {
       const value = form.querySelector("input").value.trim();
       if (form.dataset.kind === "deleted" || (form.dataset.kind === "memos" && state.memoWrong === 2 && value !== "1231")) {
@@ -366,11 +397,10 @@
     } else if (kind === "dial") submitDial(form.querySelector("input").value.replace(/\D/g, ""));
     else if (kind === "owner") {
       if (form.elements.answer.value.trim().toLowerCase() === "perla") { state.stage = 2; answerError = ""; save(); tone([523, 659]); render(); }
-      else { answerError = "That name does not match the evidence. Check the voicemail or graduation items."; renderCase(); }
+      else wrongAnswer("owner");
     } else if (kind === "echo") {
       const value = form.elements.answer.value.toLowerCase().replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").trim();
-      const choice = form.elements.choice.value;
-      const accepted = choice === "board" || ((value.includes("board") || value.includes("wall")) && (value.includes("anonymous") || value.includes("library") || value.includes("note") || value.includes("message")));
+      const accepted = /\b(boards?|discussions?|forums?|wall)\b/.test(value);
       if (accepted) {
         state.stage = 3;
         state.deadline ||= Date.now() + 15 * 60 * 1000;
@@ -378,11 +408,20 @@
         save();
         tone([523, 659, 784]);
         render();
-      } else { answerError = "Look for physical evidence of Echo in the photos and records."; renderCase(); }
+      } else wrongAnswer("echo");
+    } else if (kind === "person") {
+      if (form.elements.answer.value.trim().toLowerCase() === "lauren") {
+        state.personSolved = true;
+        answerError = "";
+        save();
+        tone([659, 784]);
+        render();
+      } else { answerError = "That name does not fit the clues. Keep investigating."; renderCase(); }
     }
   }
 
   function handleClick(event) {
+    if (!state.sshConnected) return;
     const keyButton = event.target.closest("[data-key]");
     if (keyButton) {
       const key = keyButton.dataset.key;
@@ -397,6 +436,7 @@
     if (!target) return;
     const action = target.dataset.action;
     if (modal && !action.startsWith("modal-")) return;
+    if (state.gameOver && !["restart-request", "modal-cancel", "modal-confirm"].includes(action)) return;
     switch (action) {
       case "begin": state.started = true; save(); tone([660, 880]); discover("thread:new"); go("thread", { folder: "inbox", id: "new" }, true); break;
       case "home": home(); break;
@@ -435,6 +475,11 @@
       case "mines-cell": revealMine(Number(target.dataset.index)); break;
       case "review-evidence": go("evidence"); break;
       case "ending": go("ending"); break;
+      case "show-hint": {
+        const hint = !state.started ? "Begin the investigation on the phone." : state.stage === 1 ? "Look for the owner's name in voicemails and photos." : state.stage === 2 ? "Look for physical evidence of Echo in photos and records." : !state.personSolved ? "Compare the new message with the archived conversations." : "Find the number in a contact you have discovered.";
+        document.getElementById("hint-output").textContent = hint;
+        break;
+      }
       case "restart-request": modal = { type: "restart" }; renderModal(); break;
       case "toggle-mute": state.muted = !state.muted; save(); render(); break;
       case "modal-cancel": cancelModal(); break;
@@ -464,7 +509,7 @@
       }
       render();
     } else if (current.type === "call") {
-      if (state.callCredit && state.stage === 3 && state.contacts.includes(current.contact)) {
+      if (state.callCredit && state.stage === 3 && (state.personSolved || state.forced) && state.contacts.includes(current.contact)) {
         state.batteryAtEnd = batteryPercent();
         state.callCredit = 0;
         state.ending = current.contact;
@@ -490,6 +535,8 @@
     toast("Fresh investigation started.");
   }
   function handleKey(key) {
+    if (!state.sshConnected) return;
+    if (state.gameOver && !modal) { if (key === "Enter") screenEl.querySelector('[data-action="restart-request"]')?.click(); return; }
     if (modal) {
       if (key === "Escape" && modal.type !== "battery") cancelModal();
       return;
