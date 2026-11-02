@@ -78,20 +78,20 @@ window.ECHO_DATA = {
     { id: "leaving", title: "Leaving", date: "Late 2006", text: "Echo is gone. Remembering the good days hurts now. Maybe I should lock those memories away under the date I lost it." }
   ],
   photos: [
-    { id: "portrait", title: "Graduation portrait", kind: "Portrait", date: "2006", text: "Graduation day, 2006. The handwritten name on the back reads Perla." },
-    { id: "certificate", title: "Graduation certificate", kind: "Certificate", date: "2006", text: "Perla — Graduating Class of 2006. Class roster: Perla, Lauren, Rina, Emma, Maya, Sofia, Daniel, Noah, Hannah, Alex, Priya, Ethan, Grace, Leo, Olivia, Sam, Isabel, David, Nina, Owen." },
-    { id: "birthday-photo", title: "Birthday in Times Square", kind: "New Year's Eve", date: "December 31, 2005", text: "Perla holds a birthday cake in front of a Times Square countdown. Date stamp: December 31, 2005. Another year begins with my birthday." }
+    { id: "portrait", image: "assets/gallery/portrait.png", title: "Graduation portrait", kind: "Portrait", date: "2006", text: "Graduation day, 2006. The handwritten name on the back reads Perla." },
+    { id: "certificate", image: "assets/gallery/graduation-certificate.png", title: "Graduation certificate", kind: "Certificate", date: "2006", text: "Perla — Graduating Class of 2006. Class roster: Perla, Lauren, Rina, Emma, Maya, Sofia, Daniel, Noah, Hannah, Alex, Priya, Ethan, Grace, Leo, Olivia, Sam, Isabel, David, Nina, Owen." },
+    { id: "birthday-photo", image: "assets/gallery/birthday-times-square.png", title: "Birthday in Times Square", kind: "New Year's Eve", date: "December 31, 2005", text: "Perla holds a birthday cake in front of a Times Square countdown. Date stamp: December 31, 2005. Another year begins with my birthday." }
   ],
   album: [
-    { id: "friends", title: "Two friends", kind: "Photograph", date: "2006", text: "Perla and another girl stand together at the library. On the back: Perla + Lauren." },
-    { id: "contact-page", title: "Class contacts", kind: "Address book", date: "2006", text: "Rina — 19830382907\nEmma — 10389382039" },
-    { id: "board", title: "The library board", kind: "ECHO", date: "2006", text: "A physical board in a school-library corner titled ECHO. Students leave unsigned notes and replies.", notes: [
+    { id: "friends", image: "assets/gallery/perla-lauren.png", title: "Two friends", kind: "Photograph", date: "2006", text: "Perla and another girl stand together at the library. On the back: Perla + Lauren." },
+    { id: "contact-page", image: "assets/gallery/class-contacts.png", title: "Class contacts", kind: "Address book", date: "2006", text: "Rina — 19830382907\nEmma — 10389382039" },
+    { id: "board", image: "assets/gallery/echo-board.png", title: "The library board", kind: "ECHO", date: "2006", text: "A physical board in a school-library corner titled ECHO. Students leave unsigned notes and replies.", notes: [
       ["I can be surrounded by people and still feel alone.", "Someone here understands."],
       ["I failed an exam and don't know how to tell my family.", "One result is not your whole future."],
       ["I miss a friend but don't know how to start talking again.", "Maybe start with one honest sentence."]
     ]},
-    { id: "clinic", title: "Student support visit", kind: "Confidential", date: "2006", text: "Student support visit — Perla — 2006. Perla reports prolonged fatigue, loneliness, and low mood, especially around social expectations. Assessment: symptoms consistent with mild depression. Follow-up counseling offered. Confidential student record." },
-    { id: "notice", title: "School library notice", kind: "Notice", date: "November 13, 2006", text: "School Library Notice — November 13, 2006. Echo, a student-created anonymous exchange board, has been welcomed by many students. Because harmful messages have recently circulated on the board, its use is suspended until further notice. Please speak with Ms. Collins if you need support." }
+    { id: "clinic", image: "assets/gallery/clinic-record.png", title: "Student support visit", kind: "Confidential", date: "2006", text: "Student support visit — Perla — 2006. Perla reports prolonged fatigue, loneliness, and low mood, especially around social expectations. Assessment: symptoms consistent with mild depression. Follow-up counseling offered. Confidential student record." },
+    { id: "notice", image: "assets/gallery/school-notice.png", title: "School library notice", kind: "Notice", date: "November 13, 2006", text: "School Library Notice — November 13, 2006. Echo, a student-created anonymous exchange board, has been welcomed by many students. Because harmful messages have recently circulated on the board, its use is suspended until further notice. Please speak with Ms. Collins if you need support." }
   ],
   endings: {
     lauren: { title: "The conversation can begin", lines: [
