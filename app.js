@@ -3,6 +3,7 @@
 
   const DATA = window.ECHO_DATA;
   const STORAGE_KEY = "echo-investigation-v1";
+  const LANGUAGE_KEY = "echo-language";
   const screenEl = document.getElementById("phone-screen");
   const caseEl = document.getElementById("case-content");
   const evidenceEl = document.getElementById("evidence-list");
@@ -25,6 +26,40 @@
     } catch { return defaultState(); }
   }
   let state = loadState();
+  let language = (() => { try { return localStorage.getItem(LANGUAGE_KEY) === "zh" ? "zh" : "en"; } catch { return "en"; } })();
+  const originalText = new WeakMap();
+  const originalAttributes = new WeakMap();
+  function localize(root) {
+    if (!root || !document.createTreeWalker) return;
+    const walker = document.createTreeWalker(root, 4);
+    let node;
+    while ((node = walker.nextNode())) {
+      if (node.parentElement?.closest("script,style")) continue;
+      if (!originalText.has(node)) originalText.set(node, node.nodeValue);
+      const english = originalText.get(node);
+      node.nodeValue = language === "zh" ? window.ECHO_TRANSLATE_ZH(english) : english;
+    }
+    const elements = [root, ...root.querySelectorAll("[placeholder],[aria-label],[title]")];
+    for (const element of elements) {
+      let originals = originalAttributes.get(element);
+      if (!originals) { originals = {}; originalAttributes.set(element, originals); }
+      for (const attr of ["placeholder", "aria-label", "title"]) {
+        if (!element.hasAttribute(attr)) continue;
+        if (!(attr in originals)) originals[attr] = element.getAttribute(attr);
+        element.setAttribute(attr, language === "zh" ? window.ECHO_TRANSLATE_ZH(originals[attr]) : originals[attr]);
+      }
+    }
+  }
+  function setLanguage(next) {
+    if (!["en", "zh"].includes(next) || language === next) return;
+    const drafts = [...document.querySelectorAll("input[id]")].map(input => [input.id, input.value]);
+    const focused = document.activeElement?.id;
+    language = next;
+    try { localStorage.setItem(LANGUAGE_KEY, language); } catch { /* Keep this tab's preference. */ }
+    render();
+    for (const [id, value] of drafts) { const input = document.getElementById(id); if (input) input.value = value; }
+    if (focused) document.getElementById(focused)?.focus?.();
+  }
   let ui = { screen: state.gameOver ? "game-over" : state.ending ? "ending" : state.forced ? "dialer" : state.started ? "home" : "opening", payload: null };
   let history = [];
   let modal = state.forced && !state.ending ? { type: "battery" } : null;
@@ -48,6 +83,7 @@
   }
   function toast(message) {
     toastEl.textContent = message;
+    localize(toastEl);
     toastEl.classList.add("show");
     clearTimeout(toastTimeout);
     toastTimeout = setTimeout(() => toastEl.classList.remove("show"), 3400);
@@ -137,6 +173,8 @@
   function renderStatus() {
     statusEl.innerHTML = `<span>▮▮▮ &nbsp; ${state.started ? "Oct 2026" : "--:--"}</span><span>${state.callCredit ? "1 call" : "0 calls"} · ▰ ${batteryPercent()}%</span>`;
     document.querySelector(".phone-bottom").textContent = state.callCredit ? "ONE CALL LEFT" : "NO CALL CREDIT";
+    localize(statusEl);
+    localize(document.querySelector(".phone-bottom"));
   }
   function render() {
     document.getElementById("ssh-gate").hidden = state.sshConnected;
@@ -147,6 +185,11 @@
     renderEvidence();
     renderModal();
     document.getElementById("mute-button").textContent = `Sound: ${state.muted ? "Off" : "On"}`;
+    document.documentElement.lang = language === "zh" ? "zh-CN" : "en";
+    document.title = language === "zh" ? "Echo — 远程桌面调查" : "Echo — Remote Desktop Investigation";
+    document.getElementById("lang-en")?.setAttribute?.("aria-pressed", String(language === "en"));
+    document.getElementById("lang-zh")?.setAttribute?.("aria-pressed", String(language === "zh"));
+    localize(document.body);
   }
   const button = (label, action, attrs = "", className = "screen-button") => `<button type="button" class="${className}" data-action="${action}" ${attrs}>${label}</button>`;
   function renderScreen() {
@@ -232,12 +275,12 @@
   }
   function renderPhotos(album) {
     const list = album === "album" ? DATA.album : DATA.photos;
-    return `<p class="screen-label">Photos · ${album === "album" ? "Locked album" : "Main gallery"}</p><h2>${album === "album" ? "Private album" : "Gallery"}</h2>${album === "main" ? button(`Locked album ${state.unlocked.album ? "· Open" : "· Password"}`, "open-app", 'data-id="album"') : ""}${list.map(item => `<button type="button" class="thread-row" data-action="open-photo" data-album="${album}" data-id="${item.id}"><strong>${escape(item.title)}</strong><span>${escape(item.date)}</span></button>`).join("")}`;
+    return `<p class="screen-label">Photos · ${album === "album" ? "Locked album" : "Main gallery"}</p><h2>${album === "album" ? "Private album" : "Gallery"}</h2>${album === "main" ? button(`Locked album ${state.unlocked.album ? "· Open" : "· Password"}`, "open-app", 'data-id="album"') : ""}${list.map(item => `<button type="button" class="thread-row photo-row" data-action="open-photo" data-album="${album}" data-id="${item.id}"><img class="gallery-thumb" src="${escape(item.image)}" alt="" loading="lazy"><span class="photo-row-copy"><strong>${escape(item.title)}</strong><span>${escape(item.date)}</span></span></button>`).join("")}`;
   }
   function renderPhoto(payload) {
     const item = [...DATA.photos, ...DATA.album].find(x => x.id === payload.id);
     if (!item) return "";
-    return `<p class="screen-label">${escape(item.date)}</p><h2>${escape(item.title)}</h2><div class="artifact"><div class="photo-placeholder" role="img" aria-label="${escape(item.kind)}">${escape(item.kind)}</div><p style="white-space:pre-line">${escape(item.text)}</p>${item.notes ? item.notes.map(([note, reply]) => `<div class="note"><strong>Anonymous:</strong> ${escape(note)}<br><strong>Reply:</strong> ${escape(reply)}</div>`).join("") : ""}</div>`;
+    return `<p class="screen-label">${escape(item.date)}</p><h2>${escape(item.title)}</h2><div class="artifact"><img class="album-photo" src="${escape(item.image)}" alt="${escape(item.title)}" loading="lazy">${button("View larger", "view-photo", `data-id="${escape(item.id)}"`, "screen-button inline")}<p style="white-space:pre-line">${escape(item.text)}</p>${item.notes ? item.notes.map(([note, reply]) => `<div class="note"><strong>Anonymous:</strong> ${escape(note)}<br><strong>Reply:</strong> ${escape(reply)}</div>`).join("") : ""}</div>`;
   }
   function renderGames() {
     return `<p class="screen-label">Games</p><h2>Choose a game</h2>${[
@@ -290,8 +333,8 @@
     return `<p class="screen-label">Case file</p><h2>Discovered evidence</h2>${state.viewed.filter(id => DATA.evidence[id]).map(id => `<div class="artifact"><strong>${escape(DATA.evidence[id][0])}</strong><p>${escape(DATA.evidence[id][1])}</p></div>`).join("") || "<p>No evidence recorded yet.</p>"}${button("Back to ending", "ending")}`;
   }
   function renderCase() {
-    if (state.gameOver) { caseEl.innerHTML = `<div class="question"><span class="step">Investigation ended</span><h3>Game over</h3><p>Question ${state.gameOver === "owner" ? "1" : "2"} was answered incorrectly three times. Start over to try again.</p>${button("Start over", "restart-request")}</div>`; return; }
-    if (!state.started) { caseEl.innerHTML = `<div class="question pending"><span class="step">Case not yet opened</span><h3>Begin with the phone.</h3><p>The first question will appear when you start.</p></div>`; return; }
+    if (state.gameOver) { caseEl.innerHTML = `<div class="question"><span class="step">Investigation ended</span><h3>Game over</h3><p>Question ${state.gameOver === "owner" ? "1" : "2"} was answered incorrectly three times. Start over to try again.</p>${button("Start over", "restart-request")}</div>`; localize(caseEl); return; }
+    if (!state.started) { caseEl.innerHTML = `<div class="question pending"><span class="step">Case not yet opened</span><h3>Begin with the phone.</h3><p>The first question will appear when you start.</p></div>`; localize(caseEl); return; }
     let html = "";
     if (state.stage === 1) {
       html = `<div class="question"><span class="step">Question 1 of 3</span><h3>Whose phone is this?</h3><p class="screen-subtitle">${3 - state.ownerWrong} ${3 - state.ownerWrong === 1 ? "attempt" : "attempts"} remaining.</p><form data-form="owner"><label for="owner-answer">Enter the owner's first name</label><input id="owner-answer" name="answer" autocomplete="off" required><button type="submit">Submit answer</button></form>${answerError ? `<p class="error-text">${escape(answerError)}</p>` : ""}</div>`;
@@ -302,6 +345,7 @@
       else html += `<div class="question completed"><span class="step">Question 2 · Solved</span><h3>Echo was a library message board</h3><p>Students left anonymous notes and replies.</p></div>${state.ending ? `<div class="question completed"><span class="step">Question 3 · Call placed</span><h3>${escape(DATA.contacts[state.ending].name)}</h3><p>The outgoing call used the phone's last credit.</p></div>` : `<div class="question"><span class="step">Question 3 of 3</span><h3>Who is “that person”?</h3>${state.personSolved ? `<p>Identity confirmed. Find the number and make your one call.</p><button type="button" data-action="dialer">Open dialer</button>` : state.forced ? `<p>The phone is about to die. Dial a number now.</p><button type="button" data-action="dialer">Open dialer</button>` : `<form data-form="person"><label for="person-answer">Enter the person's first name</label><input id="person-answer" name="answer" autocomplete="off" required><button type="submit">Submit answer</button></form>${answerError ? `<p class="error-text">${escape(answerError)}</p>` : ""}`}</div>`}`;
     }
     caseEl.innerHTML = html;
+    localize(caseEl);
   }
   function renderEvidence() {
     const found = state.viewed.filter(id => DATA.evidence[id]);
@@ -310,6 +354,14 @@
   }
   function renderModal() {
     if (!modal) { modalEl.innerHTML = ""; return; }
+    if (modal.type === "photo") {
+      const item = [...DATA.photos, ...DATA.album].find(photo => photo.id === modal.id);
+      if (!item) { modal = null; modalEl.innerHTML = ""; return; }
+      modalEl.innerHTML = `<div class="modal-backdrop"><div class="photo-modal" role="dialog" aria-modal="true" aria-labelledby="photo-modal-title"><div class="photo-modal-top"><h2 id="photo-modal-title">${escape(item.title)}</h2><button type="button" data-action="modal-cancel">Close image</button></div><img src="${escape(item.image)}" alt="${escape(item.title)}"><p>${escape(item.text)}</p></div></div>`;
+      localize(modalEl);
+      modalEl.querySelector('[data-action="modal-cancel"]')?.focus();
+      return;
+    }
     let title = "", message = "", confirm = "Continue", cancel = "Cancel";
     switch (modal.type) {
       case "battery": title = "Battery almost empty"; message = "The phone is about to die. Dial a number now."; confirm = "Open dialer"; cancel = "Restart investigation"; break;
@@ -320,6 +372,7 @@
       case "restart": title = "Restart investigation?"; message = "This clears the current run, including clues, unlocked folders, and the ending."; confirm = "Restart"; break;
     }
     modalEl.innerHTML = `<div class="modal-backdrop"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><h2 id="modal-title">${escape(title)}</h2><p>${escape(message)}</p><div class="modal-actions"><button type="button" data-action="modal-cancel">${cancel}</button><button type="button" class="confirm" data-action="modal-confirm">${confirm}</button></div></div></div>`;
+    localize(modalEl);
     const first = modalEl.querySelector(".modal-actions button");
     first?.focus();
   }
@@ -384,7 +437,7 @@
     if (kind === "ssh") {
       const command = form.elements.command.value.trim().replace(/\s+/g, " ").toLowerCase();
       if (command === "ssh player@echo.local") { state.sshConnected = true; save(); render(); }
-      else document.getElementById("ssh-error").textContent = "Connection failed. Type: ssh player@echo.local";
+      else { document.getElementById("ssh-error").textContent = "Connection failed. Type: ssh player@echo.local"; localize(document.getElementById("ssh-error")); }
       return;
     }
     if (!state.sshConnected || state.gameOver) return;
@@ -396,11 +449,11 @@
       } else submitGate(form.dataset.kind, value);
     } else if (kind === "dial") submitDial(form.querySelector("input").value.replace(/\D/g, ""));
     else if (kind === "owner") {
-      if (form.elements.answer.value.trim().toLowerCase() === "perla") { state.stage = 2; answerError = ""; save(); tone([523, 659]); render(); }
+      if (["perla", "佩拉"].includes(form.elements.answer.value.trim().toLowerCase())) { state.stage = 2; answerError = ""; save(); tone([523, 659]); render(); }
       else wrongAnswer("owner");
     } else if (kind === "echo") {
       const value = form.elements.answer.value.toLowerCase().replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").trim();
-      const accepted = /\b(boards?|discussions?|forums?|wall)\b/.test(value);
+      const accepted = /\b(boards?|discussions?|forums?|wall)\b/.test(value) || /留言板|匿名留言|讨论|论坛|交流板|公告板|回声墙/.test(form.elements.answer.value);
       if (accepted) {
         state.stage = 3;
         state.deadline ||= Date.now() + 15 * 60 * 1000;
@@ -410,7 +463,7 @@
         render();
       } else wrongAnswer("echo");
     } else if (kind === "person") {
-      if (form.elements.answer.value.trim().toLowerCase() === "lauren") {
+      if (["lauren", "劳伦"].includes(form.elements.answer.value.trim().toLowerCase())) {
         state.personSolved = true;
         answerError = "";
         save();
@@ -421,6 +474,8 @@
   }
 
   function handleClick(event) {
+    const languageButton = event.target.closest("[data-lang]");
+    if (languageButton) { setLanguage(languageButton.dataset.lang); return; }
     if (!state.sshConnected) return;
     const keyButton = event.target.closest("[data-key]");
     if (keyButton) {
@@ -446,6 +501,11 @@
       case "open-thread": discover(`thread:${target.dataset.id}`); if (target.dataset.id === "collins-pause") discoverContact("collins"); go("thread", { folder: target.dataset.folder, id: target.dataset.id }); break;
       case "open-item": discover(`${target.dataset.kind}:${target.dataset.id}`); go(target.dataset.kind, target.dataset.id); break;
       case "open-photo": discover(`photo:${target.dataset.id}`); if (target.dataset.id === "contact-page") discoverContact("emma"); go("photo", { album: target.dataset.album, id: target.dataset.id }); break;
+      case "view-photo": {
+        const item = [...DATA.photos, ...DATA.album].find(photo => photo.id === target.dataset.id);
+        if (item && (DATA.photos.includes(item) || state.unlocked.album)) { modal = { type: "photo", id: item.id }; renderModal(); }
+        break;
+      }
       case "send-apology": if (!state.apologySent && !state.forced && !state.ending) { modal = { type: "send" }; renderModal(); } break;
       case "dialer": go("dialer"); break;
       case "contacts": go("contacts"); break;
@@ -478,6 +538,7 @@
       case "show-hint": {
         const hint = !state.started ? "Begin the investigation on the phone." : state.stage === 1 ? "Look for the owner's name in voicemails and photos." : state.stage === 2 ? "Look for physical evidence of Echo in photos and records." : !state.personSolved ? "Compare the new message with the archived conversations." : "Find the number in a contact you have discovered.";
         document.getElementById("hint-output").textContent = hint;
+        localize(document.getElementById("hint-output"));
         break;
       }
       case "restart-request": modal = { type: "restart" }; renderModal(); break;
