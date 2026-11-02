@@ -101,18 +101,18 @@ window.ECHO_DATA = {
       ["Player", "You weren't angry that Echo closed?"],
       ["Lauren", "I was sad about Echo. What broke us was the silence. I became her friend because she was Perla, not because she was always cheerful."]
     ], card: "The board's last day is coming. The conversation can still begin." },
-    rina: { title: "The name you needed", lines: [
+    rina: { title: "The invitation remains", lines: [
       ["Rina", "Perla? How have you been? After graduation, you disappeared from all of us. We were worried."],
-      ["Player", "I'm a student who found her phone. I saw your message. Who did you mean by 'that person'?"],
-      ["Rina", "Lauren. They built Echo together. The library's being renovated, and I hoped they could see the board before it goes. If you can return the phone, please tell Perla."]
-    ], card: "You found the name. Their conversation is still waiting." },
+      ["Player", "I'm a student who found her phone. I saw your message. Why is Echo leaving again?"],
+      ["Rina", "The library's being renovated, and the old board has to come down. I hoped Perla could see it one last time. If you can return the phone, please tell her."]
+    ], card: "The invitation is still open. Some conversations are still waiting." },
     emma: { title: "The author of the threat", lines: [
-      ["Emma", "I wrote that note. I sent the threat too. I felt like the third person outside Perla and Lauren's friendship, and I wanted to upset them."],
+      ["Emma", "I wrote that note. I sent the threat too. I felt left out of a close friendship and wanted to upset them."],
       ["Player", "How did you know about the clinic report?"],
       ["Emma", "I saw it while volunteering at the clinic. I should never have looked at it, and threatening to share it was cruel. I told myself it was a prank. It wasn't. I'm sorry."]
     ], card: "The author is known. The people she hurt still need the truth." },
     collins: { title: "A new space remains", lines: [
-      ["Ms. Collins", "Echo gave students a place to say what they couldn't say face to face. I was proud of what Perla and Lauren made."],
+      ["Ms. Collins", "Echo gave students a place to say what they couldn't say face to face. I was proud of what the students made."],
       ["Player", "Rina said it is leaving again."],
       ["Ms. Collins", "The physical board has to come down for the renovation. There is an online Echo now, but that library corner holds its own memories. If you find Perla, tell her she's welcome to see it once more."]
     ], card: "A new space remains. The old board will be gone." }
